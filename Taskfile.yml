@@ -1,0 +1,117 @@
+version: '3'
+
+executor:
+  shell: bash
+
+vars:
+  CMD_FLDR: "cmd"
+  INT_FLDR: "internal"
+  MAIN_GO: "main.go"
+  PROJECTS:
+    - name: "stopwatch"
+      folder: "01_asyncstopwatch"
+    - name: "square"
+      folder: "02_gensquares"
+    - name: "ticker"
+      folder: "03_ticker"
+
+  EXE_STOPWATCH: "stopwatch{{.BIN_EXT}}"
+  EXE_SQUARE: "square{{.BIN_EXT}}"
+  EXE_TICKER: "ticker{{.BIN_EXT}}"
+
+  BIN_EXT:
+    sh: |
+      case "{{.OS}}" in
+        "windows"|"Windows_NT"|"Windows") echo ".exe" ;;
+        *) echo "" ;;
+      esac
+
+tasks:
+
+  default:
+    cmds:
+      - echo "Greetings!"
+      - echo "There's some projects with async things."
+      - echo "Main targets:"
+      - echo "  • build           - build all executable files"
+      - echo "  • dvi_0<exe_num>  - generate GoDoc documentation"
+      - echo "  • clean           - delete all exe and other tmp files"
+      - echo "  • dvi             - generate documentation with pkgsite"
+      - echo ""
+      - echo "Run any executable with args after building!"
+      - echo ""
+      - echo "  • task exe_01 n=<int> m=<int> (where n and m are positive integers)"
+      - echo "  • task exe_02 k=<int> n=<int> (where k and n are integers)"
+      - echo "  • task exe_03 k=<int> (where k is positive integer)"
+    silent: true
+
+  build:
+    cmds:
+      - |
+        echo "Compiling for OS: {{.OS}} ..."
+        {{- $ext := .BIN_EXT }}
+        {{- range .PROJECTS }}
+        go build -o {{.name}}{{$ext}} ./{{$.CMD_FLDR}}/{{.folder}}/{{$.MAIN_GO}}
+        {{- end }}
+      - echo "Executable files ready!"
+    silent: true
+
+  exe_01:
+    cmds:
+      - ./{{.EXE_STOPWATCH}} -n={{.n}} -m={{.m}}
+    dir: .
+    silent: true
+
+  exe_02:
+    cmds:
+      - ./{{.EXE_SQUARE}} -k={{.k}} -n={{.n}}
+    dir: .
+    silent: true
+
+  exe_03:
+    cmds:
+      - ./{{.EXE_TICKER}} -k={{.k}}
+    dir: .
+    silent: true
+
+  clean:
+    cmds:
+      - echo "Cleaning..."
+      - |
+        {{- range .PROJECTS}}
+        rm -rf {{.name}}
+        rm -rf {{.name}}.exe
+        {{- end}}
+      - echo "All folders are clean \m/"
+    silent: true
+
+  linters:
+    cmds:
+      - echo "Checking code with some linters"
+      - go fmt ./... || true
+      - golint ./... || true
+      - go vet ./... || true
+      - gofumpt -l -w . || true
+      - echo "Checking code done"
+    silent: true
+
+  dvi_01:
+    cmds:
+      - go doc -all {{.INT_FLDR}}/02_asyncstopwatch/stopwatch.go
+    silent: true
+
+  dvi_02:
+    cmds:
+      - go doc -all {{.INT_FLDR}}/02_gensquares/square.go
+    silent: true
+
+  dvi_03:
+    cmds:
+      - go doc -all {{.INT_FLDR}}/03_ticker/ticker.go
+    silent: true
+
+  dvi:
+    cmds:
+      - echo "To see the documentation open http://localhost:8080 in your browser"
+      - pkgsite
+    silent: true
